@@ -8,11 +8,22 @@ const DOMAINS = [
 ];
 
 const q = (domain, prompt, choices, answer, explanation) => ({ domain, prompt, choices, answer, explanation });
+const fillQ = (domain, prompt, answers, explanation) => ({ domain, type: "fill", prompt, answers, answer: answers[0], explanation });
+const matchingQ = (domain, prompt, pairs, explanation) => ({ domain, type: "matching", prompt, pairs, answer: "All terms matched correctly", explanation });
+const essayQ = (domain, prompt, rubric) => ({ domain, type: "essay", prompt, answer: "Self-review with the rubric", explanation: rubric, unscored: true });
 
 const TESTS = [
   {
-    id: "foundations", title: "Core Concepts", subtitle: "Build the foundation", minutes: 25, feedback: true,
-    description: "Definitions and essential decisions from all six lessons. Feedback appears after each answer.",
+    id: "foundations", title: "Core Concepts", subtitle: "Build the foundation · mixed formats", minutes: 35, feedback: true,
+    description: "Definitions and essential decisions from all six lessons, with multiple choice, fill-in-the-blank, matching, binary, and open-ended items.",
+    introduction: "Core Concepts checks essential knowledge from all six ESB domains using multiple-choice, fill-in-the-blank, matching, binary, and open-ended items.",
+    directions: [
+      "Complete all items in order. The timer begins when you select Begin assessment.",
+      "Multiple-choice and binary items have one best answer.",
+      "For the fill-in item, enter the requested term in your own words.",
+      "For matching, choose the correct definition for every term before checking your matches.",
+      "The open-ended response is saved for self-review and is not included in the automatic percentage score."
+    ],
     questions: [
       q("entrepreneur", "Which trait best describes an entrepreneur who believes their choices strongly influence business results?", ["High external locus of control", "Internal locus of control", "Low tolerance for ambiguity", "Dependence on consensus"], "Internal locus of control", "An internal locus of control means believing that personal effort and decisions can influence outcomes."),
       q("entrepreneur", "Why should a prospective entrepreneur complete a self-assessment before launching?", ["To guarantee investor funding", "To identify strengths, gaps, goals, and risk tolerance", "To replace market research", "To calculate tax owed"], "To identify strengths, gaps, goals, and risk tolerance", "A self-assessment tests the founder's fit with the work and reveals skills or resources that must be added."),
@@ -33,7 +44,16 @@ const TESTS = [
       q("marketing", "Why is retaining a good existing customer often valuable?", ["Retention always costs more than acquisition", "Repeat customers can create recurring revenue and referrals", "Existing customers never need service", "Retention removes all competition"], "Repeat customers can create recurring revenue and referrals", "Strong retention can raise lifetime value and reduce the continual cost of replacing lost customers."),
       q("finance", "Which financial statement reports revenue and expenses over a period?", ["Balance sheet", "Income statement", "Cash receipt", "Purchase order"], "Income statement", "The income statement measures performance over time by subtracting expenses from revenue to reach profit or loss."),
       q("finance", "Which equation underlies a balance sheet?", ["Revenue − expenses = cash", "Assets = liabilities + owner's equity", "Price × tax = equity", "Sales + inventory = debt"], "Assets = liabilities + owner's equity", "The balance sheet must remain in balance: resources are financed by creditor claims and owner claims."),
-      q("finance", "A product sells for $50 and has a variable cost of $30. What is its contribution margin per unit?", ["$20", "$30", "$50", "$80"], "$20", "Contribution margin per unit equals selling price minus variable cost: $50 − $30 = $20.")
+      q("finance", "A product sells for $50 and has a variable cost of $30. What is its contribution margin per unit?", ["$20", "$30", "$50", "$80"], "$20", "Contribution margin per unit equals selling price minus variable cost: $50 − $30 = $20."),
+      fillQ("finance", "Fill in the blank: Selling price minus variable cost per unit equals the ________ per unit.", ["contribution margin", "unit contribution margin"], "Contribution margin per unit is the amount each sale contributes toward fixed costs and profit."),
+      matchingQ("startup", "Match each business term with its correct definition.", [
+        ["Value proposition", "The reason a target customer should choose the offer"],
+        ["Target market", "The defined group of customers the business intends to serve"],
+        ["SOP", "A documented repeatable method for completing a task"],
+        ["Equity financing", "Capital exchanged for an ownership interest"]
+      ], "A value proposition explains customer benefit; a target market defines the intended buyers; an SOP documents a process; and equity financing exchanges capital for ownership."),
+      { ...q("opportunity", "Binary item — True or False: In a SWOT analysis, strengths and weaknesses are internal factors.", ["True", "False"], "True", "Strengths and weaknesses are internal. Opportunities and threats are external."), type: "binary" },
+      essayQ("opportunity", "A neighborhood café has loyal customers and skilled employees, but weak cash reserves. A new office complex is opening nearby while a national competitor is entering the area. Write a short recommendation that uses at least one strength, weakness, opportunity, and threat.", "Self-review rubric: identify all four SWOT factors accurately, recommend a specific action, explain how a strength can pursue the opportunity, and address the weakness or threat with a practical safeguard.")
     ]
   },
   {
@@ -464,7 +484,12 @@ function shuffled(items) {
 function startTest(id) {
   const baseTest = TESTS.find(t => t.id === id);
   const test = id.startsWith("full-length") ? { ...baseTest, questions: buildFullLengthQuestions() } : baseTest;
-  activeTest = { test, index: 0, answers: [], choices: test.questions.map(item => shuffled(item.choices)), seconds: test.minutes * 60, locked: false };
+  activeTest = { test, index: 0, answers: [], choices: test.questions.map(item => item.choices ? shuffled(item.choices) : []), seconds: test.minutes * 60, locked: false };
+  if (test.introduction) return renderTestIntro();
+  beginTimedTest();
+}
+
+function beginTimedTest() {
   renderQuestion();
   timerId = setInterval(() => {
     activeTest.seconds--;
@@ -473,18 +498,72 @@ function startTest(id) {
   }, 1000);
 }
 
+function renderTestIntro() {
+  const { test } = activeTest;
+  document.querySelector("#app").innerHTML = `<section class="quiz-shell"><article class="test-intro"><p class="eyebrow">${escapeHtml(test.title)}</p><h1>Introduction</h1><p class="intro-copy">${escapeHtml(test.introduction)}</p><h2>Directions</h2><ol>${test.directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol><div class="test-meta"><span class="pill">${test.questions.length} items</span><span class="pill">${test.minutes} min</span><span class="pill">Mixed format</span></div><div class="quiz-actions"><button class="text-button" id="intro-back">All tests</button><button class="button primary" id="begin-test">Begin assessment</button></div></article></section>`;
+  document.querySelector("#intro-back").onclick = () => go("tests");
+  document.querySelector("#begin-test").onclick = beginTimedTest;
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function renderQuestion() {
   const { test, index, answers, choices } = activeTest;
   const item = test.questions[index];
   const selected = answers[index];
+  let interaction;
+  if (item.type === "fill") {
+    interaction = `<div class="written-response"><label for="fill-answer">Your answer</label><input id="fill-answer" class="text-answer" type="text" value="${escapeHtml(selected?.choice || "")}" autocomplete="off" ${selected && test.feedback ? "disabled" : ""}><button class="button secondary" id="submit-written" ${selected && test.feedback ? "disabled" : ""}>Check answer</button></div>`;
+  } else if (item.type === "matching") {
+    const options = shuffled(item.pairs.map(pair => pair[1]));
+    interaction = `<div class="matching-grid">${item.pairs.map(([term]) => `<label class="matching-row"><strong>${escapeHtml(term)}</strong><select data-match="${escapeHtml(term)}" ${selected && test.feedback ? "disabled" : ""}><option value="">Choose a definition</option>${options.map(option => `<option value="${escapeHtml(option)}" ${selected?.values?.[term] === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select></label>`).join("")}<button class="button secondary" id="submit-matching" ${selected && test.feedback ? "disabled" : ""}>Check matches</button></div>`;
+  } else if (item.type === "essay") {
+    interaction = `<div class="written-response"><label for="essay-answer">Your response</label><textarea id="essay-answer" class="essay-answer" rows="8" ${selected ? "disabled" : ""}>${escapeHtml(selected?.choice || "")}</textarea><button class="button secondary" id="submit-essay" ${selected ? "disabled" : ""}>Save response</button></div>`;
+  } else {
+    interaction = `<div class="choices">${choices[index].map((c, n) => `<button class="choice ${selected?.choice === c ? "selected" : ""}" data-choice="${escapeHtml(c)}"><span class="choice-letter">${String.fromCharCode(65+n)}</span><span>${escapeHtml(c)}</span></button>`).join("")}</div>`;
+  }
   const app = document.querySelector("#app");
-  app.innerHTML = `<section class="quiz-shell"><header class="quiz-head"><div><p class="eyebrow">${escapeHtml(test.title)}</p><h1>Question ${index+1} of ${test.questions.length}</h1></div><span class="timer" id="timer"></span><div class="progress-track"><span style="width:${((index+1)/test.questions.length)*100}%"></span></div></header><article class="question-card"><div class="question-meta"><span>${escapeHtml(domainName(item.domain))}</span><span>${test.feedback ? "Guided feedback" : "Exam mode"}</span></div><h2>${escapeHtml(item.prompt)}</h2><div class="choices">${choices[index].map((c, n) => `<button class="choice ${selected?.choice === c ? "selected" : ""}" data-choice="${escapeHtml(c)}"><span class="choice-letter">${String.fromCharCode(65+n)}</span><span>${escapeHtml(c)}</span></button>`).join("")}</div><div id="feedback"></div><div class="quiz-actions"><button class="text-button" id="exit-test">Exit test</button><button class="button primary" id="next-question" ${selected ? "" : "disabled"}>${index === test.questions.length-1 ? "Submit test" : "Next question"}</button></div></article></section>`;
+  app.innerHTML = `<section class="quiz-shell"><header class="quiz-head"><div><p class="eyebrow">${escapeHtml(test.title)}</p><h1>Question ${index+1} of ${test.questions.length}</h1></div><span class="timer" id="timer"></span><div class="progress-track"><span style="width:${((index+1)/test.questions.length)*100}%"></span></div></header><article class="question-card"><div class="question-meta"><span>${escapeHtml(domainName(item.domain))}</span><span>${item.type === "essay" ? "Open response" : test.feedback ? "Guided feedback" : "Exam mode"}</span></div><h2>${escapeHtml(item.prompt)}</h2>${interaction}<div id="feedback"></div><div class="quiz-actions"><button class="text-button" id="exit-test">Exit test</button><button class="button primary" id="next-question" ${selected ? "" : "disabled"}>${index === test.questions.length-1 ? "Submit test" : "Next question"}</button></div></article></section>`;
   updateTimer();
   document.querySelectorAll("[data-choice]").forEach(b => b.onclick = () => selectAnswer(b.dataset.choice));
+  if (item.type === "fill") document.querySelector("#submit-written").onclick = submitFillAnswer;
+  if (item.type === "matching") document.querySelector("#submit-matching").onclick = submitMatchingAnswer;
+  if (item.type === "essay") document.querySelector("#submit-essay").onclick = submitEssayAnswer;
   document.querySelector("#next-question").onclick = nextQuestion;
   document.querySelector("#exit-test").onclick = () => { if (confirm("Exit this attempt? Your current answers will not be saved.")) go("tests"); };
   if (selected && test.feedback) showFeedback();
   scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function normalizeAnswer(value) { return String(value).trim().toLowerCase().replace(/\s+/g, " "); }
+
+function submitFillAnswer() {
+  const value = document.querySelector("#fill-answer").value.trim();
+  if (!value) return;
+  const item = activeTest.test.questions[activeTest.index];
+  const correct = item.answers.some(answer => normalizeAnswer(answer) === normalizeAnswer(value));
+  activeTest.answers[activeTest.index] = { choice: value, correct };
+  activeTest.locked = activeTest.test.feedback;
+  renderQuestion();
+}
+
+function submitMatchingAnswer() {
+  const item = activeTest.test.questions[activeTest.index];
+  const values = {};
+  document.querySelectorAll("[data-match]").forEach(select => { values[select.dataset.match] = select.value; });
+  if (Object.values(values).some(value => !value)) return;
+  const correct = item.pairs.every(([term, definition]) => values[term] === definition);
+  const choice = item.pairs.map(([term]) => `${term}: ${values[term]}`).join("; ");
+  activeTest.answers[activeTest.index] = { choice, values, correct };
+  activeTest.locked = activeTest.test.feedback;
+  renderQuestion();
+}
+
+function submitEssayAnswer() {
+  const value = document.querySelector("#essay-answer").value.trim();
+  if (!value) return;
+  activeTest.answers[activeTest.index] = { choice: value, correct: null };
+  activeTest.locked = true;
+  renderQuestion();
 }
 
 function selectAnswer(choice) {
@@ -508,7 +587,11 @@ function showFeedback() {
   const { test, index, answers } = activeTest;
   const item = test.questions[index];
   const good = answers[index].correct;
-  document.querySelector("#feedback").innerHTML = `<div class="explanation"><strong>${good ? "Correct." : `Correct answer: ${escapeHtml(item.answer)}`}</strong>${escapeHtml(item.explanation)}</div>`;
+  if (item.unscored) {
+    document.querySelector("#feedback").innerHTML = `<div class="explanation"><strong>Response saved — review it with this rubric.</strong>${escapeHtml(item.explanation)}</div>`;
+  } else {
+    document.querySelector("#feedback").innerHTML = `<div class="explanation"><strong>${good ? "Correct." : `Correct answer: ${escapeHtml(item.answer)}`}</strong>${escapeHtml(item.explanation)}</div>`;
+  }
 }
 
 function nextQuestion() {
@@ -529,24 +612,28 @@ function updateTimer() {
 function finishTest() {
   clearInterval(timerId);
   const { test, answers } = activeTest;
-  const correct = answers.filter(a => a?.correct).length;
-  const score = Math.round(correct / test.questions.length * 100);
+  const scoredIndexes = test.questions.map((item, i) => ({ item, i })).filter(x => !x.item.unscored).map(x => x.i);
+  const correct = scoredIndexes.filter(i => answers[i]?.correct).length;
+  const scoredTotal = scoredIndexes.length;
+  const score = scoredTotal ? Math.round(correct / scoredTotal * 100) : 0;
   const prior = saved.results[test.id] || { best: 0, attempts: 0 };
   saved.results[test.id] = { best: Math.max(prior.best, score), latest: score, attempts: prior.attempts + 1, date: new Date().toISOString() };
   save();
-  renderResults(score, correct);
+  renderResults(score, correct, scoredTotal);
 }
 
-function renderResults(score, correct) {
+function renderResults(score, correct, scoredTotal) {
   const { test, answers } = activeTest;
   const domainRows = DOMAINS.map(d => {
-    const qs = test.questions.map((item, i) => ({item, i})).filter(x => x.item.domain === d.id);
+    const qs = test.questions.map((item, i) => ({item, i})).filter(x => x.item.domain === d.id && !x.item.unscored);
     const right = qs.filter(x => answers[x.i]?.correct).length;
     const pct = qs.length ? Math.round(right / qs.length * 100) : 0;
     return `<div class="domain-row"><strong>${d.name}</strong><div class="bar"><span style="width:${pct}%"></span></div><span>${pct}%</span></div>`;
   }).join("");
-  const missed = test.questions.map((item, i) => ({item, i})).filter(x => !answers[x.i]?.correct);
-  document.querySelector("#app").innerHTML = `<section class="quiz-shell"><div class="results-hero"><p class="eyebrow">${escapeHtml(test.title)} complete</p><div class="score-big">${score}%</div><p>${score >= 80 ? "Strong result. Review the misses, then keep the weak domains active." : "Use the domain scores below to guide your next review round."}</p></div><h2>Domain performance</h2><div class="domain-results">${domainRows}</div><div class="quiz-actions"><button class="button secondary" id="back-tests">All tests</button><button class="button primary" id="retry-test">Retake this test</button></div><h2>${missed.length ? `Review ${missed.length} missed question${missed.length===1?"":"s"}` : "Perfect score"}</h2><div class="review-list">${missed.length ? missed.map(({item,i}) => `<article class="review-item"><span class="pill">${domainName(item.domain)}</span><h3>${escapeHtml(item.prompt)}</h3><p><strong>Your answer:</strong> ${escapeHtml(answers[i]?.choice || "No answer")}</p><p><strong>Correct answer:</strong> ${escapeHtml(item.answer)}</p><p>${escapeHtml(item.explanation)}</p></article>`).join("") : `<article class="review-item"><p>You answered all ${test.questions.length} questions correctly.</p></article>`}</div></section>`;
+  const missed = test.questions.map((item, i) => ({item, i})).filter(x => !x.item.unscored && !answers[x.i]?.correct);
+  const openResponses = test.questions.map((item, i) => ({item, i})).filter(x => x.item.unscored);
+  const openReview = openResponses.length ? `<h2>Open-response self-review</h2><div class="review-list">${openResponses.map(({item,i}) => `<article class="review-item"><span class="pill">Not auto-scored</span><h3>${escapeHtml(item.prompt)}</h3><p><strong>Your response:</strong> ${escapeHtml(answers[i]?.choice || "No response")}</p><p><strong>Rubric:</strong> ${escapeHtml(item.explanation)}</p></article>`).join("")}</div>` : "";
+  document.querySelector("#app").innerHTML = `<section class="quiz-shell"><div class="results-hero"><p class="eyebrow">${escapeHtml(test.title)} complete</p><div class="score-big">${score}%</div><p>${correct} of ${scoredTotal} auto-scored items correct.${openResponses.length ? " Review the open response separately with its rubric." : score >= 80 ? " Strong result. Review the misses, then keep the weak domains active." : " Use the domain scores below to guide your next review round."}</p></div><h2>Domain performance</h2><div class="domain-results">${domainRows}</div><div class="quiz-actions"><button class="button secondary" id="back-tests">All tests</button><button class="button primary" id="retry-test">Retake this test</button></div><h2>${missed.length ? `Review ${missed.length} missed question${missed.length===1?"":"s"}` : "All auto-scored items correct"}</h2><div class="review-list">${missed.length ? missed.map(({item,i}) => `<article class="review-item"><span class="pill">${domainName(item.domain)}</span><h3>${escapeHtml(item.prompt)}</h3><p><strong>Your answer:</strong> ${escapeHtml(answers[i]?.choice || "No answer")}</p><p><strong>Correct answer:</strong> ${escapeHtml(item.answer)}</p><p>${escapeHtml(item.explanation)}</p></article>`).join("") : `<article class="review-item"><p>You answered all ${scoredTotal} auto-scored items correctly.</p></article>`}</div>${openReview}</section>`;
   document.querySelector("#back-tests").onclick = () => go("tests");
   document.querySelector("#retry-test").onclick = () => startTest(test.id);
   scrollTo({ top: 0, behavior: "smooth" });

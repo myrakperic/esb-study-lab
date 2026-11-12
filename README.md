@@ -7,6 +7,7 @@ An interactive study site for Entrepreneurship and Small Business certification 
 - 14 interactive practice tests
 - Two randomized 45-question full-length simulations with 50-minute timers
 - A 40-question focused exam containing 20% SWOT analysis, 30% course concepts, and 50% business mathematics
+- Core Concepts includes directions plus multiple-choice, fill-in-the-blank, matching, binary, and open-ended items
 - 72 interactive flashcards organized across six course domains
 - Immediate or end-of-test explanations, depending on the test mode
 - Domain-level performance summaries
@@ -36,5 +37,5 @@ Test scores and flashcard mastery are stored with `localStorage` in each visitor
 
 ## Content note
 
-The study bank contains 272 original questions, twelve focused tests, two randomized 45-question full-length simulations, and 72 flashcards. It is an independent study aid based on the six domains in the GMetrix ESB International course. It does not reproduce official certification exam questions and is not an official GMetrix or Certiport product.
+The study bank contains 276 original questions, twelve focused tests, two randomized 45-question full-length simulations, and 72 flashcards. It is an independent study aid based on the six domains in the GMetrix ESB International course. It does not reproduce official certification exam questions and is not an official GMetrix or Certiport product.
 
