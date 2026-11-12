@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive Entrepreneurship and Small Business practice tests and flashcards.">
+  <title>ESB Study Lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="ESB Study Lab home">
+      <span class="brand-mark">ESB</span>
+      <span><strong>Study Lab</strong><small>International course review</small></span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <button class="nav-link active" data-view="home">Dashboard</button>
+      <button class="nav-link" data-view="tests">Practice tests</button>
+      <button class="nav-link" data-view="flashcards">Flashcards</button>
+    </nav>
+  </header>
+
+  <main id="app" tabindex="-1"></main>
+
+  <footer>
+    <p>Independent study aid based on the six domains in your GMetrix ESB International course. It does not reproduce official exam questions.</p>
+  </footer>
+
+  <template id="home-template">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Your certification prep plan</p>
+        <h1>Turn business concepts into exam-ready decisions.</h1>
+        <p class="lede">Fourteen practice tests, including two randomized full-length simulations and a 40-question SWOT, concepts, and business-math exam, plus domain scoring and a 72-card mastery deck — all saved on this device.</p>
+        <div class="hero-actions">
+          <button class="button primary" data-action="open-tests">Start a practice test</button>
+          <button class="button secondary" data-action="open-flashcards">Review flashcards</button>
+        </div>
+      </div>
+      <div class="readiness-card" aria-label="Study progress">
+        <span class="ring" id="readiness-ring"><strong id="readiness-score">0%</strong></span>
+        <div><span class="muted">Readiness</span><strong id="readiness-label">Start your first test</strong></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-heading"><div><p class="eyebrow">Course map</p><h2>Six domains to master</h2></div><p>Built from the lesson structure in your active GMetrix course.</p></div>
+      <div class="domain-grid" id="domain-grid"></div>
+    </section>
+    <section class="section compact">
+      <div class="section-heading"><div><p class="eyebrow">Focused study plan</p><h2>Recall first. Simulate last. Then rest.</h2></div><p>Use focused blocks with a short break between them.</p></div>
+      <ol class="study-plan">
+        <li><span>Block 1</span><div><strong>Vocabulary I</strong><p>Take Test 7, then review only the terms you missed.</p></div></li>
+        <li><span>Block 2</span><div><strong>Vocabulary II & III</strong><p>Take Tests 8 and 9 with a short break between them.</p></div></li>
+        <li><span>Block 3</span><div><strong>Practice A</strong><p>Take Test 10 in exam mode and study every explanation afterward.</p></div></li>
+        <li><span>Block 4</span><div><strong>Full-length rehearsal</strong><p>Take Test 12 or 13 under the 50-minute limit. Use the second only if you have time after reviewing misses.</p></div></li>
+      </ol>
+    </section>
+  </template>
+
+  <template id="tests-template">
+    <section class="page-head"><p class="eyebrow">Practice tests</p><h1>Choose your challenge</h1><p>Fourteen tests cover vocabulary, business decisions, calculations, two randomized 45-question full-course simulations, and a focused 40-question SWOT, concepts, and business-math exam.</p></section>
+    <section class="test-grid" id="test-grid"></section>
+  </template>
+
+  <template id="flashcards-template">
+    <section class="page-head"><p class="eyebrow">Flashcards</p><h1>Build fast recall</h1><p>Click the card or press Space to reveal the answer. Mastery is saved automatically.</p></section>
+    <section class="flash-toolbar">
+      <label>Domain <select id="flash-filter"></select></label>
+      <button class="button small secondary" id="shuffle-cards">Shuffle</button>
+      <span id="mastery-count" class="pill"></span>
+    </section>
+    <section class="flash-stage">
+      <button class="icon-button" id="prev-card" aria-label="Previous card">←</button>
+      <button class="flashcard" id="flashcard" aria-live="polite">
+        <span class="card-domain" id="card-domain"></span>
+        <span class="card-label" id="card-label">QUESTION</span>
+        <strong id="card-content"></strong>
+        <span class="flip-hint">Click to flip</span>
+      </button>
+      <button class="icon-button" id="next-card" aria-label="Next card">→</button>
+    </section>
+    <div class="flash-actions">
+      <button class="button secondary" id="mark-learning">Keep learning</button>
+      <button class="button primary" id="mark-mastered">Mark mastered</button>
+    </div>
+    <p class="flash-progress" id="flash-progress"></p>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
