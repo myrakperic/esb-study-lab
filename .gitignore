@@ -1,0 +1,8 @@
+# Internal verification screenshots
+*-proof.png
+
+# Local development files
+.DS_Store
+Thumbs.db
+.vscode/
+
